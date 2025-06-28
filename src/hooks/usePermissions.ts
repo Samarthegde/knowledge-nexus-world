@@ -43,23 +43,35 @@ export const usePermissions = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // First get user roles
+      const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          role,
-          role_permissions!inner(permission)
-        `)
+        .select('role')
         .eq('user_id', user.id);
 
-      if (error) {
-        console.error('Error fetching permissions:', error);
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
         return;
       }
 
-      const userPermissions = data?.flatMap(roleData => 
-        roleData.role_permissions.map(rp => rp.permission as Permission)
-      ) || [];
+      if (!userRoles || userRoles.length === 0) {
+        setPermissions([]);
+        return;
+      }
 
+      // Then get permissions for those roles
+      const roles = userRoles.map(ur => ur.role);
+      const { data: rolePermissions, error: permissionsError } = await supabase
+        .from('role_permissions')
+        .select('permission')
+        .in('role', roles);
+
+      if (permissionsError) {
+        console.error('Error fetching permissions:', permissionsError);
+        return;
+      }
+
+      const userPermissions = rolePermissions?.map(rp => rp.permission as Permission) || [];
       setPermissions(userPermissions);
     } catch (error) {
       console.error('Error fetching permissions:', error);

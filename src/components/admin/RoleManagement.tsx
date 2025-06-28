@@ -13,9 +13,7 @@ interface UserProfile {
   id: string;
   email: string;
   full_name: string | null;
-  user_roles: Array<{
-    role: 'student' | 'instructor' | 'admin';
-  }>;
+  roles: string[];
 }
 
 const RoleManagement = () => {
@@ -32,53 +30,89 @@ const RoleManagement = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(`
-        id,
-        email,
-        full_name,
-        user_roles(role)
-      `);
+    try {
+      // First get all profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name');
 
-    if (error) {
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch users',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Then get roles for each user
+      const usersWithRoles: UserProfile[] = [];
+      
+      for (const profile of profiles || []) {
+        const { data: userRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', profile.id);
+
+        if (rolesError) {
+          console.error('Error fetching roles for user:', profile.id, rolesError);
+          continue;
+        }
+
+        usersWithRoles.push({
+          ...profile,
+          roles: userRoles?.map(ur => ur.role) || ['student']
+        });
+      }
+
+      setUsers(usersWithRoles);
+    } catch (error) {
       console.error('Error fetching users:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch users',
         variant: 'destructive'
       });
-    } else {
-      setUsers(data || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const updateUserRole = async (userId: string, newRole: 'student' | 'instructor' | 'admin') => {
-    // First, remove existing roles
-    await supabase
-      .from('user_roles')
-      .delete()
-      .eq('user_id', userId);
+    try {
+      // First, remove existing roles
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
 
-    // Then add the new role
-    const { error } = await supabase
-      .from('user_roles')
-      .insert({ user_id: userId, role: newRole });
+      // Then add the new role
+      const { error } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: newRole });
 
-    if (error) {
+      if (error) {
+        console.error('Error updating role:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update user role',
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: 'User role updated successfully'
+        });
+        fetchUsers();
+      }
+    } catch (error) {
       console.error('Error updating role:', error);
       toast({
         title: 'Error',
         description: 'Failed to update user role',
         variant: 'destructive'
       });
-    } else {
-      toast({
-        title: 'Success',
-        description: 'User role updated successfully'
-      });
-      fetchUsers();
     }
   };
 
@@ -136,16 +170,16 @@ const RoleManagement = () => {
                       <p className="text-sm text-gray-600">{user.email}</p>
                     </div>
                     <div className="flex gap-2">
-                      {user.user_roles.map((roleData, index) => (
-                        <Badge key={index} className={`flex items-center gap-1 ${getRoleColor(roleData.role)}`}>
-                          {getRoleIcon(roleData.role)}
-                          {roleData.role}
+                      {user.roles.map((role, index) => (
+                        <Badge key={index} className={`flex items-center gap-1 ${getRoleColor(role)}`}>
+                          {getRoleIcon(role)}
+                          {role}
                         </Badge>
                       ))}
                     </div>
                   </div>
                   <Select
-                    value={user.user_roles[0]?.role || 'student'}
+                    value={user.roles[0] || 'student'}
                     onValueChange={(newRole: 'student' | 'instructor' | 'admin') => 
                       updateUserRole(user.id, newRole)
                     }
