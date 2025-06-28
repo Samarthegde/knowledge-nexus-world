@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { GraduationCap, User, LogOut, Plus, BookOpen, BarChart3 } from 'lucide-react';
+import { GraduationCap, User, LogOut, Plus, BookOpen, BarChart3, Users } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +17,7 @@ const Header = () => {
   const navigate = useNavigate();
 
   const isInstructor = userRole === 'instructor' || userRole === 'admin';
+  const isAdmin = userRole === 'admin';
 
   return (
     <header className="border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
@@ -63,6 +63,17 @@ const Header = () => {
                 Create Course
               </Button>
             </>
+          )}
+
+          {isAdmin && (
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/admin/dashboard')}
+              className="text-gray-700 hover:text-blue-600"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Admin
+            </Button>
           )}
         </nav>
 
