@@ -21,7 +21,7 @@ const createCourseSchema = z.object({
   short_description: z.string().min(1, 'Short description is required').max(200, 'Short description must be less than 200 characters'),
   description: z.string().min(1, 'Description is required'),
   category: z.string().min(1, 'Please select a category'),
-  level: z.string().min(1, 'Please select a level'),
+  level: z.enum(['beginner', 'intermediate', 'advanced']),
   price: z.number().min(0, 'Price must be 0 or greater'),
   currency: z.string().default('USD'),
   duration_minutes: z.number().min(1, 'Duration must be at least 1 minute'),
@@ -43,12 +43,7 @@ const categories = [
   'Other'
 ];
 
-const levels = [
-  'Beginner',
-  'Intermediate',
-  'Advanced',
-  'All Levels'
-];
+const levels = ['beginner', 'intermediate', 'advanced'];
 
 const CreateCourseForm = () => {
   const { user } = useAuth();
@@ -63,7 +58,7 @@ const CreateCourseForm = () => {
       short_description: '',
       description: '',
       category: '',
-      level: '',
+      level: 'beginner',
       price: 0,
       currency: 'USD',
       duration_minutes: 60,
@@ -79,8 +74,22 @@ const CreateCourseForm = () => {
       const { data: course, error } = await supabase
         .from('courses')
         .insert({
-          ...data,
+          title: data.title,
+          short_description: data.short_description,
+          description: data.description,
+          category: data.category,
+          level: data.level,
+          price: data.price, 
+          currency: data.currency,
+          duration_minutes: data.duration_minutes,
+          is_published: data.is_published,
           instructor_id: user.id,
+          slug: data.title.toLowerCase()
+            .trim()
+            .replace(/\s+/g, '-')
+            .replace(/[^\w-]+/g, ''),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select()
         .single();
@@ -221,9 +230,9 @@ const CreateCourseForm = () => {
                       </FormControl>
                       <SelectContent>
                         {levels.map((level) => (
-                          <SelectItem key={level} value={level}>
-                            {level}
-                          </SelectItem>
+                        <SelectItem key={level} value={level}>
+                          {level.charAt(0).toUpperCase() + level.slice(1)}
+                        </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

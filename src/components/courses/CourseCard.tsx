@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Users, Star, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CourseCardProps {
   id: string;
@@ -39,6 +40,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
   isEnrolled = false
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const formatDuration = (minutes?: number) => {
     if (!minutes) return 'N/A';
@@ -144,6 +146,22 @@ const CourseCard: React.FC<CourseCardProps> = ({
             >
               Continue Learning
             </Button>
+          ) : user?.role === 'instructor' || user?.role === 'admin' ? (
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => navigate(`/instructor/courses/${id}`)}
+              >
+                View
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => navigate(`/instructor/courses/${id}/edit`)}
+              >
+                Edit
+              </Button>
+            </div>
           ) : (
             <Button 
               className="w-full" 

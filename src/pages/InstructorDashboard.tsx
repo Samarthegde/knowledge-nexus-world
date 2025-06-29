@@ -5,10 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Users, DollarSign, BarChart3, Plus, Award } from 'lucide-react';
+import { useInstructorCourses } from '@/hooks/useInstructorCourses';
+import CourseCard from '@/components/courses/CourseCard';
+// ... rest of imports
+
 
 const InstructorDashboard = () => {
   const { hasPermission } = usePermissions();
   const navigate = useNavigate();
+  const { courses, loading, error } = useInstructorCourses();
 
   if (!hasPermission('create_courses') && !hasPermission('manage_own_courses')) {
     return (
@@ -47,7 +52,7 @@ const InstructorDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Courses</p>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{courses.length}</p>
                 </div>
                 <BookOpen className="h-8 w-8 text-blue-600" />
               </div>
@@ -102,16 +107,39 @@ const InstructorDashboard = () => {
                 Recent Courses
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 text-center py-8">No courses created yet</p>
-              {hasPermission('create_courses') && (
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => navigate('/instructor/courses/new')}
-                >
-                  Create Your First Course
-                </Button>
+            <CardContent className="space-y-4">
+              {courses.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {courses.map((course) => (
+                    <CourseCard
+                      key={course.id}
+                      id={course.id}
+                      title={course.title}
+                      shortDescription={course.short_description}
+                      thumbnailUrl={course.thumbnail_url}
+                      price={course.price ?? 0}
+                      currency={course.currency ?? 'USD'}
+                      level={course.level}
+                      durationMinutes={course.duration_minutes}
+                      category={course.category}
+                      slug={course.slug}
+                      isEnrolled={false}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <p className="text-gray-600 text-center py-8">No courses created yet</p>
+                  {hasPermission('create_courses') && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => navigate('/instructor/courses/new')}
+                    >
+                      Create Your First Course
+                    </Button>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
