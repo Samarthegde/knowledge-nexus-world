@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,18 +8,22 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, Unlock, Lock, Save, Trash2 } from 'lucide-react';
+import { Clock, Unlock, Lock, Save, Trash2, Calendar, CheckCircle } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 
 type CourseContent = Tables<'course_content'>;
 type ContentSchedule = Tables<'content_schedule'>;
 
+interface ContentWithSchedule extends CourseContent {
+  schedule?: ContentSchedule;
+  prerequisite_title?: string;
+}
+
 const DripContentManager = () => {
   const { id: courseId } = useParams();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [courseContent, setCourseContent] = useState<CourseContent[]>([]);
-  const [schedules, setSchedules] = useState<ContentSchedule[]>([]);
+  const [courseContent, setCourseContent] = useState<ContentWithSchedule[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,107 +33,136 @@ const DripContentManager = () => {
   const fetchData = async () => {
     if (!courseId) return;
 
-    // Fetch content
-    const { data: contentData, error: contentError } = await supabase
-      .from('course_content')
-      .select('*')
-      .eq('course_id', courseId)
-      .order('order_index');
+    try {
+      // Fetch content with schedule information
+      const { data: contentData, error: contentError } = await supabase
+        .from('course_content')
+        .select(`
+          *,
+          content_schedule!content_schedule_content_id_fkey(
+            id,
+            unlock_after_days,
+            unlock_after_content_id,
+            created_at
+          )
+        `)
+        .eq('course_id', courseId)
+        .order('order_index');
 
-    if (contentError) {
-      console.error('Error fetching content:', contentError);
-      return;
+      if (contentError) throw contentError;
+
+      // Fetch prerequisite titles
+      const contentWithSchedules = await Promise.all(
+        (contentData || []).map(async (content: any) => {
+          let prerequisite_title = null;
+          
+          if (content.content_schedule?.unlock_after_content_id) {
+            const { data: prereqData } = await supabase
+              .from('course_content')
+              .select('title')
+              .eq('id', content.content_schedule.unlock_after_content_id)
+              .single();
+            
+            prerequisite_title = prereqData?.title;
+          }
+
+          return {
+            ...content,
+            schedule: content.content_schedule,
+            prerequisite_title
+          };
+        })
+      );
+
+      setCourseContent(contentWithSchedules);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load content data',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setCourseContent(contentData || []);
-
-    // Fetch schedules
-    const { data: scheduleData, error: scheduleError } = await supabase
-      .from('content_schedule')
-      .select(`
-        *,
-        course_content!content_schedule_content_id_fkey(title),
-        unlockContent:course_content!content_schedule_unlock_after_content_id_fkey(title)
-      `)
-      .eq('course_id', courseId);
-
-    if (scheduleError) {
-      console.error('Error fetching schedules:', scheduleError);
-      return;
-    }
-
-    setSchedules(scheduleData || []);
-    setLoading(false);
   };
 
   const addContentSchedule = async (contentId: string, unlockAfterDays: number, unlockAfterContentId?: string) => {
-    const { error } = await supabase
-      .from('content_schedule')
-      .insert({
-        course_id: courseId!,
-        content_id: contentId,
-        unlock_after_days: unlockAfterDays,
-        unlock_after_content_id: unlockAfterContentId || null
+    try {
+      const { error } = await supabase
+        .from('content_schedule')
+        .insert({
+          course_id: courseId!,
+          content_id: contentId,
+          unlock_after_days: unlockAfterDays,
+          unlock_after_content_id: unlockAfterContentId || null
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Content schedule added successfully'
       });
 
-    if (error) {
+      fetchData();
+    } catch (error) {
       console.error('Error adding schedule:', error);
       toast({
         title: 'Error',
         description: 'Failed to add content schedule',
         variant: 'destructive'
       });
-      return;
     }
-
-    toast({
-      title: 'Success',
-      description: 'Content schedule added successfully'
-    });
-
-    fetchData();
   };
 
   const removeContentSchedule = async (scheduleId: string) => {
-    const { error } = await supabase
-      .from('content_schedule')
-      .delete()
-      .eq('id', scheduleId);
+    try {
+      const { error } = await supabase
+        .from('content_schedule')
+        .delete()
+        .eq('id', scheduleId);
 
-    if (error) {
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Content schedule removed successfully'
+      });
+
+      fetchData();
+    } catch (error) {
       console.error('Error removing schedule:', error);
       toast({
         title: 'Error',
         description: 'Failed to remove content schedule',
         variant: 'destructive'
       });
-      return;
     }
-
-    toast({
-      title: 'Success',
-      description: 'Content schedule removed successfully'
-    });
-
-    fetchData();
   };
 
-  const getScheduleForContent = (contentId: string) => {
-    return schedules.find(s => s.content_id === contentId);
-  };
-
-  const getContentStatus = (content: CourseContent) => {
-    const schedule = getScheduleForContent(content.id);
-    if (!schedule) {
-      return { status: 'immediate', color: 'default' };
+  const getContentStatus = (content: ContentWithSchedule) => {
+    if (!content.schedule) {
+      return { status: 'immediate', color: 'default', icon: Unlock };
     }
-    if (schedule.unlock_after_days && schedule.unlock_after_days > 0) {
-      return { status: `${schedule.unlock_after_days} days`, color: 'secondary' };
+    
+    if (content.schedule.unlock_after_days && content.schedule.unlock_after_days > 0) {
+      return { 
+        status: `${content.schedule.unlock_after_days} days`, 
+        color: 'secondary', 
+        icon: Clock 
+      };
     }
-    if (schedule.unlock_after_content_id) {
-      return { status: 'after content', color: 'outline' };
+    
+    if (content.schedule.unlock_after_content_id) {
+      return { 
+        status: 'after prerequisite', 
+        color: 'outline', 
+        icon: CheckCircle 
+      };
     }
-    return { status: 'scheduled', color: 'secondary' };
+    
+    return { status: 'scheduled', color: 'secondary', icon: Calendar };
   };
 
   if (loading) return <div>Loading...</div>;
@@ -141,54 +173,63 @@ const DripContentManager = () => {
         <h2 className="text-2xl font-bold">Drip Content Manager</h2>
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5" />
-          <span className="text-sm text-gray-600">{schedules.length} scheduled items</span>
+          <span className="text-sm text-gray-600">
+            {courseContent.filter(c => c.schedule).length} scheduled items
+          </span>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Course Content</CardTitle>
+          <CardTitle>Course Content Schedule</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {courseContent.map(content => {
-              const schedule = getScheduleForContent(content.id);
               const status = getContentStatus(content);
+              const StatusIcon = status.icon;
               
               return (
                 <Card key={content.id}>
-                  <CardContent className="pt-4">
+                  <CardContent className="pt-6">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-3 mb-2">
                           <h4 className="font-medium">{content.title}</h4>
-                          <Badge variant={status.color as any}>
-                            {schedule ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
-                            {schedule ? status.status : 'Immediate Access'}
+                          <Badge variant={status.color as any} className="flex items-center gap-1">
+                            <StatusIcon className="h-3 w-3" />
+                            {content.schedule ? status.status : 'Immediate Access'}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600">
+                        
+                        <p className="text-sm text-gray-600 mb-2">
                           Type: {content.content_type} • Order: {content.order_index + 1}
                         </p>
                         
-                        {schedule && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
-                            {schedule.unlock_after_days && schedule.unlock_after_days > 0 && (
-                              <p>Unlocks {schedule.unlock_after_days} days after enrollment</p>
+                        {content.schedule && (
+                          <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
+                            {content.schedule.unlock_after_days && content.schedule.unlock_after_days > 0 && (
+                              <div className="flex items-center gap-2 mb-2">
+                                <Clock className="h-4 w-4 text-blue-600" />
+                                <span>Unlocks {content.schedule.unlock_after_days} days after enrollment</span>
+                              </div>
                             )}
-                            {schedule.unlock_after_content_id && (
-                              <p>Unlocks after completing: {schedule.unlockContent?.title}</p>
+                            {content.schedule.unlock_after_content_id && (
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                <span>Unlocks after completing: {content.prerequisite_title}</span>
+                              </div>
                             )}
                           </div>
                         )}
                       </div>
                       
                       <div className="flex gap-2">
-                        {schedule ? (
+                        {content.schedule ? (
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => removeContentSchedule(schedule.id)}
+                            onClick={() => removeContentSchedule(content.schedule!.id)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Remove Schedule
@@ -215,9 +256,12 @@ const DripContentManager = () => {
           <CardTitle>Drip Content Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">Time-based Release</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-5 w-5 text-blue-600" />
+                <h4 className="font-medium text-blue-900">Time-based Release</h4>
+              </div>
               <p className="text-sm text-blue-700">
                 Set content to unlock after a specific number of days from student enrollment. 
                 This helps pace learning and maintain engagement over time.
@@ -225,7 +269,10 @@ const DripContentManager = () => {
             </div>
             
             <div className="p-4 bg-green-50 rounded-lg">
-              <h4 className="font-medium text-green-900 mb-2">Prerequisite-based Release</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <h4 className="font-medium text-green-900">Prerequisite-based Release</h4>
+              </div>
               <p className="text-sm text-green-700">
                 Unlock content only after students complete specific prerequisite content. 
                 This ensures proper learning progression and mastery of concepts.
@@ -233,7 +280,10 @@ const DripContentManager = () => {
             </div>
             
             <div className="p-4 bg-yellow-50 rounded-lg">
-              <h4 className="font-medium text-yellow-900 mb-2">Immediate Access</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <Unlock className="h-5 w-5 text-yellow-600" />
+                <h4 className="font-medium text-yellow-900">Immediate Access</h4>
+              </div>
               <p className="text-sm text-yellow-700">
                 Content without scheduling rules is available immediately upon enrollment. 
                 Use this for introductory materials and course overviews.
@@ -248,7 +298,7 @@ const DripContentManager = () => {
 
 interface AddScheduleFormProps {
   contentId: string;
-  courseContent: CourseContent[];
+  courseContent: ContentWithSchedule[];
   onAdd: (contentId: string, unlockAfterDays: number, unlockAfterContentId?: string) => void;
 }
 
@@ -283,7 +333,7 @@ const AddScheduleForm: React.FC<AddScheduleFormProps> = ({ contentId, courseCont
   }
 
   return (
-    <div className="flex flex-col gap-2 p-3 border rounded min-w-[300px]">
+    <div className="flex flex-col gap-3 p-4 border rounded-lg min-w-[320px] bg-white shadow-sm">
       <Select value={scheduleType} onValueChange={(value) => setScheduleType(value as 'days' | 'content')}>
         <SelectTrigger>
           <SelectValue />
@@ -295,30 +345,36 @@ const AddScheduleForm: React.FC<AddScheduleFormProps> = ({ contentId, courseCont
       </Select>
 
       {scheduleType === 'days' && (
-        <Input
-          type="number"
-          min="0"
-          placeholder="Days"
-          value={days}
-          onChange={(e) => setDays(e.target.value)}
-        />
+        <div>
+          <label className="text-sm font-medium mb-1 block">Days after enrollment</label>
+          <Input
+            type="number"
+            min="0"
+            placeholder="0"
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+          />
+        </div>
       )}
 
       {scheduleType === 'content' && (
-        <Select value={prerequisiteContentId} onValueChange={setPrerequisiteContentId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select prerequisite content" />
-          </SelectTrigger>
-          <SelectContent>
-            {courseContent
-              .filter(c => c.id !== contentId)
-              .map(content => (
-                <SelectItem key={content.id} value={content.id}>
-                  {content.title}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
+        <div>
+          <label className="text-sm font-medium mb-1 block">Prerequisite content</label>
+          <Select value={prerequisiteContentId} onValueChange={setPrerequisiteContentId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select prerequisite content" />
+            </SelectTrigger>
+            <SelectContent>
+              {courseContent
+                .filter(c => c.id !== contentId)
+                .map(content => (
+                  <SelectItem key={content.id} value={content.id}>
+                    {content.title}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       <div className="flex gap-2">
