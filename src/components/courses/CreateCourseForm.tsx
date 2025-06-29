@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -15,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Save, ArrowLeft } from 'lucide-react';
+import MediaUploader from './MediaUploader';
 
 const createCourseSchema = z.object({
   title: z.string().min(1, 'Course title is required').max(100, 'Title must be less than 100 characters'),
@@ -26,6 +26,7 @@ const createCourseSchema = z.object({
   currency: z.string().default('USD'),
   duration_minutes: z.number().min(1, 'Duration must be at least 1 minute'),
   is_published: z.boolean().default(false),
+  thumbnail_url: z.string().optional(),
 });
 
 type CreateCourseFormData = z.infer<typeof createCourseSchema>;
@@ -63,6 +64,7 @@ const CreateCourseForm = () => {
       currency: 'USD',
       duration_minutes: 60,
       is_published: false,
+      thumbnail_url: '',
     },
   });
 
@@ -84,6 +86,7 @@ const CreateCourseForm = () => {
           duration_minutes: data.duration_minutes,
           is_published: data.is_published,
           instructor_id: user.id,
+          thumbnail_url: data.thumbnail_url,
           slug: data.title.toLowerCase()
             .trim()
             .replace(/\s+/g, '-')
@@ -114,6 +117,10 @@ const CreateCourseForm = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleThumbnailUpload = (url: string) => {
+    form.setValue('thumbnail_url', url);
   };
 
   return (
@@ -177,6 +184,29 @@ const CreateCourseForm = () => {
                   </FormControl>
                   <FormDescription>
                     Detailed information about your course content and objectives
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="thumbnail_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Course Thumbnail</FormLabel>
+                  <FormControl>
+                    <MediaUploader
+                      onUpload={handleThumbnailUpload}
+                      currentUrl={field.value}
+                      acceptedTypes={['image/*']}
+                      maxSize={5}
+                      label="Upload Course Thumbnail"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Upload an attractive thumbnail image for your course
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

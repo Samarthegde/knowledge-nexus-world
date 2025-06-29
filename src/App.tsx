@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +17,7 @@ import EditCoursePage from "@/pages/EditCoursePage";
 import PublicCoursePage from "@/pages/PublicCoursePage";
 import PaymentSuccessPage from "@/pages/PaymentSuccessPage";
 import LearnCoursePage from "@/pages/LearnCoursePage";
+import TestingPage from "@/pages/TestingPage";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +43,7 @@ const App = () => (
                 <Route path="/instructor/courses/new" element={<CreateCoursePage />} />
                 <Route path="/instructor/courses/:id" element={<CourseViewPage />} />
                 <Route path="/instructor/courses/:id/edit" element={<EditCoursePage />} />
+                <Route path="/testing" element={<TestingPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
