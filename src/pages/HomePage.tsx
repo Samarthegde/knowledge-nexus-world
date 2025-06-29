@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import CourseCard from '@/components/courses/CourseCard';
-import { GraduationCap, BookOpen, Users, Award, ArrowRight, Play, Star, TrendingUp } from 'lucide-react';
+import { GraduationCap, BookOpen, Users, Award, ArrowRight, Play, Star, TrendingUp, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface Course {
@@ -30,6 +29,7 @@ const HomePage = () => {
     totalStudents: 0,
     totalInstructors: 0
   });
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchFeaturedCourses();
@@ -37,33 +37,45 @@ const HomePage = () => {
   }, []);
 
   const fetchFeaturedCourses = async () => {
-    const { data, error } = await supabase
-      .from('courses')
-      .select('*')
-      .eq('is_published', true)
-      .limit(6)
-      .order('created_at', { ascending: false });
+    try {
+      setFetchError(null);
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('is_published', true)
+        .limit(6)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching courses:', error);
-      return;
+      if (error) {
+        console.error('Error fetching courses:', error);
+        setFetchError('Unable to load courses. Please check your connection and try again.');
+        return;
+      }
+
+      setFeaturedCourses(data || []);
+    } catch (err) {
+      console.error('Network error fetching courses:', err);
+      setFetchError('Network error: Unable to connect to the server. Please check your internet connection.');
     }
-
-    setFeaturedCourses(data || []);
   };
 
   const fetchStats = async () => {
-    const [coursesResult, studentsResult, instructorsResult] = await Promise.all([
-      supabase.from('courses').select('id', { count: 'exact' }).eq('is_published', true),
-      supabase.from('enrollments').select('student_id', { count: 'exact' }),
-      supabase.from('user_roles').select('user_id', { count: 'exact' }).eq('role', 'instructor')
-    ]);
+    try {
+      const [coursesResult, studentsResult, instructorsResult] = await Promise.all([
+        supabase.from('courses').select('id', { count: 'exact' }).eq('is_published', true),
+        supabase.from('enrollments').select('student_id', { count: 'exact' }),
+        supabase.from('user_roles').select('user_id', { count: 'exact' }).eq('role', 'instructor')
+      ]);
 
-    setStats({
-      totalCourses: coursesResult.count || 0,
-      totalStudents: studentsResult.count || 0,
-      totalInstructors: instructorsResult.count || 0
-    });
+      setStats({
+        totalCourses: coursesResult.count || 0,
+        totalStudents: studentsResult.count || 0,
+        totalInstructors: instructorsResult.count || 0
+      });
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+      // Don't show error for stats as it's not critical
+    }
   };
 
   if (loading) {
@@ -76,6 +88,28 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Error Banner */}
+      {fetchError && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+            <div className="text-red-700">
+              <p className="font-medium">Connection Error</p>
+              <p className="text-sm">{fetchError}</p>
+              <button 
+                onClick={() => {
+                  fetchFeaturedCourses();
+                  fetchStats();
+                }}
+                className="text-red-600 underline text-sm mt-1 hover:text-red-800"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-50 via-white to-purple-50 py-20 overflow-hidden">
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
