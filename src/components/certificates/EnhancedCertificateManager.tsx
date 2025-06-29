@@ -51,7 +51,7 @@ const EnhancedCertificateManager = () => {
       .from('certificates')
       .select(`
         *,
-        student_profiles:profiles!certificates_student_id_fkey(full_name, email),
+        student_profiles:profiles(full_name, email),
         courses!inner(title)
       `)
       .eq('course_id', courseId)
