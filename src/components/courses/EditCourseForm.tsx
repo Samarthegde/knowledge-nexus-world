@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -16,7 +15,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useToast } from '@/hooks/use-toast';
 import { Save, ArrowLeft, BookOpen } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import CourseBuilder from './CourseBuilder';
+import EnhancedCourseBuilder from './EnhancedCourseBuilder';
+import MediaUploader from './MediaUploader';
 
 const editCourseSchema = z.object({
   title: z.string().min(1, 'Course title is required').max(100),
@@ -28,6 +28,7 @@ const editCourseSchema = z.object({
   currency: z.string(),
   duration_minutes: z.number().min(1),
   is_published: z.boolean(),
+  thumbnail_url: z.string().optional(),
 });
 
 type EditCourseFormData = z.infer<typeof editCourseSchema>;
@@ -89,7 +90,8 @@ const EditCourseForm = () => {
         price: data.price,
         currency: data.currency,
         duration_minutes: data.duration_minutes,
-        is_published: data.is_published
+        is_published: data.is_published,
+        thumbnail_url: data.thumbnail_url || '',
       });
       form.reset({
         title: data.title,
@@ -100,7 +102,8 @@ const EditCourseForm = () => {
         price: data.price,
         currency: data.currency,
         duration_minutes: data.duration_minutes,
-        is_published: data.is_published
+        is_published: data.is_published,
+        thumbnail_url: data.thumbnail_url || '',
       });
     };
 
@@ -134,6 +137,10 @@ const EditCourseForm = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleThumbnailUpload = (url: string) => {
+    form.setValue('thumbnail_url', url);
   };
 
   if (!course) return <div>Loading...</div>;
@@ -210,6 +217,29 @@ const EditCourseForm = () => {
                             {...field} 
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="thumbnail_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Course Thumbnail</FormLabel>
+                        <FormControl>
+                          <MediaUploader
+                            onUpload={handleThumbnailUpload}
+                            currentUrl={field.value}
+                            acceptedTypes={['image/*']}
+                            maxSize={5}
+                            label="Upload Course Thumbnail"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Upload an attractive thumbnail image for your course
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -379,7 +409,7 @@ const EditCourseForm = () => {
         </TabsContent>
 
         <TabsContent value="content">
-          <CourseBuilder />
+          <EnhancedCourseBuilder />
         </TabsContent>
       </Tabs>
     </div>

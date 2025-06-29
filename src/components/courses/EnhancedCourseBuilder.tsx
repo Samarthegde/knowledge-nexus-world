@@ -1,24 +1,33 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, HelpCircle, FileText, Award, Clock } from 'lucide-react';
+import { BookOpen, HelpCircle, FileText, Award, Clock, Layers, FileImage } from 'lucide-react';
 import QuizBuilder from '@/components/quizzes/QuizBuilder';
 import AssignmentBuilder from '@/components/assignments/AssignmentBuilder';
 import GradingInterface from '@/components/grading/GradingInterface';
 import CertificateManager from '@/components/certificates/CertificateManager';
 import DripContentManager from '@/components/content/DripContentManager';
+import SectionManager from './SectionManager';
+import SyllabusBuilder from './SyllabusBuilder';
 
-const CourseBuilder = () => {
+const EnhancedCourseBuilder = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <BookOpen className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Course Builder</h1>
+        <h1 className="text-2xl font-bold">Enhanced Course Builder</h1>
       </div>
 
-      <Tabs defaultValue="quizzes" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="sections" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="sections" className="flex items-center gap-2">
+            <Layers className="h-4 w-4" />
+            Sections
+          </TabsTrigger>
+          <TabsTrigger value="syllabus" className="flex items-center gap-2">
+            <FileImage className="h-4 w-4" />
+            Syllabus
+          </TabsTrigger>
           <TabsTrigger value="quizzes" className="flex items-center gap-2">
             <HelpCircle className="h-4 w-4" />
             Quizzes
@@ -40,6 +49,28 @@ const CourseBuilder = () => {
             Drip Content
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="sections">
+          <Card>
+            <CardHeader>
+              <CardTitle>Course Sections Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SectionManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="syllabus">
+          <Card>
+            <CardHeader>
+              <CardTitle>Syllabus Builder</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SyllabusBuilder />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="quizzes">
           <Card>
@@ -100,4 +131,4 @@ const CourseBuilder = () => {
   );
 };
 
-export default CourseBuilder;
+export default EnhancedCourseBuilder;
