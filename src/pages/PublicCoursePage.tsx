@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,9 +55,19 @@ const PublicCoursePage = () => {
         .select('*')
         .eq('slug', slug)
         .eq('is_published', true)
-        .single();
+        .maybeSingle();
 
       if (courseError) throw courseError;
+
+      if (!courseData) {
+        toast({
+          title: 'Course Not Found',
+          description: 'The course you are looking for does not exist or is not published.',
+          variant: 'destructive',
+        });
+        navigate('/courses');
+        return;
+      }
 
       setCourse(courseData);
 
@@ -67,7 +76,7 @@ const PublicCoursePage = () => {
         .from('profiles')
         .select('full_name, bio')
         .eq('id', courseData.instructor_id)
-        .single();
+        .maybeSingle();
 
       setInstructor(instructorData);
 
@@ -88,7 +97,7 @@ const PublicCoursePage = () => {
           .eq('course_id', courseData.id)
           .eq('user_id', user.id)
           .eq('payment_status', 'completed')
-          .single();
+          .maybeSingle();
 
         setIsEnrolled(!!purchaseData);
       }
@@ -96,7 +105,7 @@ const PublicCoursePage = () => {
       console.error('Error fetching course:', error);
       toast({
         title: 'Error',
-        description: 'Course not found',
+        description: 'Failed to load course information. Please try again.',
         variant: 'destructive',
       });
       navigate('/courses');
