@@ -13,10 +13,12 @@ import {
   Brain,
   Heart,
   MessageSquare,
-  CheckCircle
+  CheckCircle,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import AIAnalyticsDashboard from '@/components/ai/AIAnalyticsDashboard';
 
 interface EngagementMetrics {
   activeUsers: number;
@@ -153,11 +155,12 @@ const LearningAnalyticsDashboard = () => {
       </div>
 
       <Tabs defaultValue="engagement" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="engagement">Academic Engagement</TabsTrigger>
           <TabsTrigger value="personalization">Personalization</TabsTrigger>
           <TabsTrigger value="support">Support Systems</TabsTrigger>
           <TabsTrigger value="assessment">Assessment</TabsTrigger>
+          <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
         </TabsList>
 
         <TabsContent value="engagement" className="space-y-6">
@@ -338,7 +341,7 @@ const LearningAnalyticsDashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
                     <p className="text-2xl font-bold">{supportData.responseTime}h</p>
-                    <p className="text-xs text-green-600">Target: &lt;2h</p>
+                    <p className="text-xs text-green-600">Target: 2h</p>
                   </div>
                   <Clock className="h-8 w-8 text-blue-600" />
                 </div>
@@ -496,6 +499,10 @@ const LearningAnalyticsDashboard = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="ai-assistant" className="space-y-6">
+          <AIAnalyticsDashboard />
         </TabsContent>
       </Tabs>
     </div>

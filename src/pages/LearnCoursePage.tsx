@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Play, FileText, File, ChevronLeft, ChevronRight, Lock, Clock, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import DripContentViewer from '@/components/content/DripContentViewer';
+import AIAssistantWidget from '@/components/ai/AIAssistantWidget';
 
 interface CourseContent {
   id: string;
@@ -218,6 +219,9 @@ const LearnCoursePage = () => {
     }
   };
 
+  // Calculate current progress percentage
+  const currentProgress = content.length > 0 ? Math.round(((currentContentIndex + 1) / content.length) * 100) : 0;
+
   if (isLoading) return <div>Loading...</div>;
 
   if (!course) {
@@ -234,6 +238,13 @@ const LearnCoursePage = () => {
             <p className="text-gray-600">Course content will unlock based on the schedule set by your instructor.</p>
           </div>
           <DripContentViewer />
+          
+          {/* AI Assistant Widget */}
+          <AIAssistantWidget 
+            courseId={id}
+            currentLesson="Course Overview"
+            studentProgress={0}
+          />
         </div>
       </div>
     );
@@ -385,7 +396,7 @@ const LearnCoursePage = () => {
                   </Button>
 
                   <div className="text-sm text-gray-500">
-                    Progress: {Math.round(((currentContentIndex + 1) / content.length) * 100)}%
+                    Progress: {currentProgress}%
                   </div>
 
                   <Button
@@ -401,6 +412,13 @@ const LearnCoursePage = () => {
           </div>
         </div>
       </div>
+
+      {/* AI Assistant Widget */}
+      <AIAssistantWidget 
+        courseId={id}
+        currentLesson={currentContent?.title}
+        studentProgress={currentProgress}
+      />
     </div>
   );
 };
