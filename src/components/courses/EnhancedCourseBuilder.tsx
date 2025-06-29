@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, HelpCircle, FileText, Award, Clock, Layers, FileImage } from 'lucide-react';
+import { BookOpen, HelpCircle, FileText, Award, Clock, Layers, FileImage, TrendingUp } from 'lucide-react';
 import QuizBuilder from '@/components/quizzes/QuizBuilder';
 import AssignmentBuilder from '@/components/assignments/AssignmentBuilder';
 import GradingInterface from '@/components/grading/GradingInterface';
-import CertificateManager from '@/components/certificates/CertificateManager';
+import EnhancedCertificateManager from '@/components/certificates/EnhancedCertificateManager';
 import DripContentManager from '@/components/content/DripContentManager';
 import SectionManager from './SectionManager';
 import SyllabusBuilder from './SyllabusBuilder';
+import ProgressTracker from '@/components/instructor/ProgressTracker';
 
 const EnhancedCourseBuilder = () => {
   return (
@@ -19,7 +20,7 @@ const EnhancedCourseBuilder = () => {
       </div>
 
       <Tabs defaultValue="sections" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="sections" className="flex items-center gap-2">
             <Layers className="h-4 w-4" />
             Sections
@@ -43,6 +44,10 @@ const EnhancedCourseBuilder = () => {
           <TabsTrigger value="certificates" className="flex items-center gap-2">
             <Award className="h-4 w-4" />
             Certificates
+          </TabsTrigger>
+          <TabsTrigger value="progress" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Progress
           </TabsTrigger>
           <TabsTrigger value="drip-content" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
@@ -108,10 +113,21 @@ const EnhancedCourseBuilder = () => {
         <TabsContent value="certificates">
           <Card>
             <CardHeader>
-              <CardTitle>Certificate Management</CardTitle>
+              <CardTitle>Enhanced Certificate Management</CardTitle>
             </CardHeader>
             <CardContent>
-              <CertificateManager />
+              <EnhancedCertificateManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="progress">
+          <Card>
+            <CardHeader>
+              <CardTitle>Student Progress Tracking</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProgressTracker />
             </CardContent>
           </Card>
         </TabsContent>
