@@ -338,7 +338,7 @@ const LearningAnalyticsDashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
                     <p className="text-2xl font-bold">{supportData.responseTime}h</p>
-                    <p className="text-xs text-green-600">Target: <2h</p>
+                    <p className="text-xs text-green-600">Target: &lt;2h</p>
                   </div>
                   <Clock className="h-8 w-8 text-blue-600" />
                 </div>
