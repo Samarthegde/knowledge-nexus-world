@@ -18,6 +18,7 @@ import PublicCoursePage from "@/pages/PublicCoursePage";
 import PaymentSuccessPage from "@/pages/PaymentSuccessPage";
 import LearnCoursePage from "@/pages/LearnCoursePage";
 import TestingPage from "@/pages/TestingPage";
+import RatingDemoPage from "@/pages/RatingDemoPage";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
                 <Route path="/instructor/courses/:id" element={<CourseViewPage />} />
                 <Route path="/instructor/courses/:id/edit" element={<EditCoursePage />} />
                 <Route path="/testing" element={<TestingPage />} />
+                <Route path="/rating-demo" element={<RatingDemoPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
