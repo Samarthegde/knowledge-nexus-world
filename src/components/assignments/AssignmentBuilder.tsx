@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -179,14 +178,14 @@ const AssignmentBuilder = () => {
             <div>
               <label className="text-sm">Module (Optional)</label>
               <Select
-                value={assignmentForm.module_id || ''}
-                onValueChange={(value) => setAssignmentForm({...assignmentForm, module_id: value || null})}
+                value={assignmentForm.module_id || 'none'}
+                onValueChange={(value) => setAssignmentForm({...assignmentForm, module_id: value === 'none' ? null : value})}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a module" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No Module</SelectItem>
+                  <SelectItem value="none">No Module</SelectItem>
                   {modules.map(module => (
                     <SelectItem key={module.id} value={module.id}>
                       {module.title}
