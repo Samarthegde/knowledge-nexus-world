@@ -1,0 +1,291 @@
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { Play, FileText, File, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+
+interface CourseContent {
+  id: string;
+  title: string;
+  description: string;
+  content_type: string;
+  content_url: string;
+  text_content: string;
+  is_free: boolean;
+  duration_minutes: number;
+}
+
+const LearnCoursePage = () => {
+  const { id } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [course, setCourse] = useState(null);
+  const [content, setContent] = useState<CourseContent[]>([]);
+  const [currentContentIndex, setCurrentContentIndex] = useState(0);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (id && user) {
+      checkEnrollmentAndFetchContent();
+    }
+  }, [id, user]);
+
+  const checkEnrollmentAndFetchContent = async () => {
+    try {
+      // Check if user is enrolled
+      const { data: purchaseData, error: purchaseError } = await supabase
+        .from('course_purchases')
+        .select('*')
+        .eq('course_id', id)
+        .eq('user_id', user.id)
+        .eq('payment_status', 'completed')
+        .single();
+
+      if (purchaseError && purchaseError.code !== 'PGRST116') {
+        throw purchaseError;
+      }
+
+      if (!purchaseData) {
+        // Check if user can access free content
+        const { data: courseData } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (courseData?.price > 0) {
+          toast({
+            title: 'Access Denied',
+            description: 'You need to purchase this course to access it',
+            variant: 'destructive',
+          });
+          navigate(`/course/${courseData.slug}`);
+          return;
+        }
+      }
+
+      setIsEnrolled(!!purchaseData);
+
+      // Fetch course details
+      const { data: courseData, error: courseError } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (courseError) throw courseError;
+      setCourse(courseData);
+
+      // Fetch course content
+      const { data: contentData, error: contentError } = await supabase
+        .from('course_content')
+        .select('*')
+        .eq('course_id', id)
+        .order('order_index');
+
+      if (contentError) throw contentError;
+
+      // Filter content based on enrollment
+      const accessibleContent = contentData.filter(item => 
+        item.is_free || isEnrolled || purchaseData
+      );
+
+      setContent(accessibleContent || []);
+    } catch (error) {
+      console.error('Error fetching course data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load course content',
+        variant: 'destructive',
+      });
+      navigate('/courses');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const currentContent = content[currentContentIndex];
+
+  const nextContent = () => {
+    if (currentContentIndex < content.length - 1) {
+      setCurrentContentIndex(currentContentIndex + 1);
+    }
+  };
+
+  const prevContent = () => {
+    if (currentContentIndex > 0) {
+      setCurrentContentIndex(currentContentIndex - 1);
+    }
+  };
+
+  const getContentIcon = (type: string) => {
+    switch (type) {
+      case 'video':
+        return <Play className="h-4 w-4" />;
+      case 'pdf':
+        return <File className="h-4 w-4" />;
+      case 'text':
+        return <FileText className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  if (isLoading) return <div>Loading...</div>;
+
+  if (!course || content.length === 0) {
+    return <div>No accessible content found</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar - Course Content List */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">{course.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {content.map((item, index) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setCurrentContentIndex(index)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        index === currentContentIndex
+                          ? 'bg-blue-50 border-blue-200'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        {getContentIcon(item.content_type)}
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{item.title}</p>
+                          <p className="text-xs text-gray-500">
+                            {item.content_type.toUpperCase()}
+                            {item.duration_minutes && ` • ${item.duration_minutes} min`}
+                          </p>
+                        </div>
+                        {item.is_free && (
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                            FREE
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="lg:col-span-3">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="flex items-center space-x-2">
+                      {getContentIcon(currentContent.content_type)}
+                      <span>{currentContent.title}</span>
+                    </CardTitle>
+                    {currentContent.description && (
+                      <p className="text-gray-600 mt-2">{currentContent.description}</p>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {currentContentIndex + 1} of {content.length}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Content Display */}
+                <div className="mb-6">
+                  {currentContent.content_type === 'text' ? (
+                    <div className="prose max-w-none">
+                      <div className="whitespace-pre-wrap bg-white p-6 rounded-lg border">
+                        {currentContent.text_content}
+                      </div>
+                    </div>
+                  ) : currentContent.content_type === 'video' ? (
+                    <div className="aspect-video bg-black rounded-lg flex items-center justify-center">
+                      {currentContent.content_url ? (
+                        <video 
+                          controls 
+                          className="w-full h-full rounded-lg"
+                          src={currentContent.content_url}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                        <div className="text-white text-center">
+                          <Play className="h-16 w-16 mx-auto mb-4" />
+                          <p>Video content will be displayed here</p>
+                          <p className="text-sm text-gray-300 mt-2">
+                            URL: {currentContent.content_url || 'Not provided'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : currentContent.content_type === 'pdf' ? (
+                    <div className="aspect-[4/5] bg-gray-100 rounded-lg flex items-center justify-center">
+                      {currentContent.content_url ? (
+                        <iframe
+                          src={currentContent.content_url}
+                          className="w-full h-full rounded-lg"
+                          title="PDF Content"
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <File className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                          <p>PDF content will be displayed here</p>
+                          <p className="text-sm text-gray-400 mt-2">
+                            URL: {currentContent.content_url || 'Not provided'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Navigation */}
+                <div className="flex justify-between items-center pt-6 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={prevContent}
+                    disabled={currentContentIndex === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
+
+                  <div className="text-sm text-gray-500">
+                    Progress: {Math.round(((currentContentIndex + 1) / content.length) * 100)}%
+                  </div>
+
+                  <Button
+                    onClick={nextContent}
+                    disabled={currentContentIndex === content.length - 1}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LearnCoursePage;

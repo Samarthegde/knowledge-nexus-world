@@ -15,6 +15,9 @@ import InstructorDashboard from "@/pages/InstructorDashboard";
 import CreateCoursePage from "@/pages/CreateCoursePage";
 import CourseViewPage from "@/pages/CourseViewPage";
 import EditCoursePage from "@/pages/EditCoursePage";
+import PublicCoursePage from "@/pages/PublicCoursePage";
+import PaymentSuccessPage from "@/pages/PaymentSuccessPage";
+import LearnCoursePage from "@/pages/LearnCoursePage";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +35,9 @@ const App = () => (
                 <Route path="/" element={<HomePage />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/courses" element={<CoursesPage />} />
+                <Route path="/course/:slug" element={<PublicCoursePage />} />
+                <Route path="/learn/:id" element={<LearnCoursePage />} />
+                <Route path="/payment-success" element={<PaymentSuccessPage />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
                 <Route path="/instructor/courses/new" element={<CreateCoursePage />} />
