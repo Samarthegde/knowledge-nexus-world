@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { GraduationCap, User, LogOut, Plus, BookOpen, BarChart3, Users } from 'lucide-react';
+import { GraduationCap, User, LogOut, Plus, BookOpen, BarChart3, Users, TrendingUp } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,9 +11,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const Header = () => {
   const { user, signOut, userRole } = useAuth();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
 
   const isInstructor = userRole === 'instructor' || userRole === 'admin';
@@ -43,6 +45,17 @@ const Header = () => {
             <BookOpen className="h-4 w-4 mr-2" />
             Courses
           </Button>
+          
+          {(hasPermission('view_all_analytics') || hasPermission('view_student_progress')) && (
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/analytics')}
+              className="text-gray-700 hover:text-blue-600"
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Analytics
+            </Button>
+          )}
           
           {isInstructor && (
             <>
@@ -107,6 +120,12 @@ const Header = () => {
                   <BookOpen className="mr-2 h-4 w-4" />
                   My Courses
                 </DropdownMenuItem>
+                {(hasPermission('view_all_analytics') || hasPermission('view_student_progress')) && (
+                  <DropdownMenuItem onClick={() => navigate('/analytics')}>
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Learning Analytics
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut}>
                   <LogOut className="mr-2 h-4 w-4" />

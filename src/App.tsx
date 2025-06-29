@@ -19,6 +19,7 @@ import PaymentSuccessPage from "@/pages/PaymentSuccessPage";
 import LearnCoursePage from "@/pages/LearnCoursePage";
 import TestingPage from "@/pages/TestingPage";
 import RatingDemoPage from "@/pages/RatingDemoPage";
+import LearningAnalyticsPage from "@/pages/LearningAnalyticsPage";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
                 <Route path="/instructor/courses/new" element={<CreateCoursePage />} />
                 <Route path="/instructor/courses/:id" element={<CourseViewPage />} />
                 <Route path="/instructor/courses/:id/edit" element={<EditCoursePage />} />
+                <Route path="/analytics" element={<LearningAnalyticsPage />} />
                 <Route path="/testing" element={<TestingPage />} />
                 <Route path="/rating-demo" element={<RatingDemoPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
