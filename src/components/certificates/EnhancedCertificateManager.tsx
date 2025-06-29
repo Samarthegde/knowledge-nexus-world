@@ -16,9 +16,11 @@ type Certificate = Tables<'certificates'>;
 type CertificateTemplate = Tables<'certificate_templates'>;
 
 interface CertificateWithStudent extends Certificate {
-  profiles?: {
-    full_name: string | null;
-    email: string;
+  users?: {
+    profiles?: {
+      full_name: string | null;
+      email: string;
+    };
   };
   courses?: {
     title: string;
@@ -51,7 +53,9 @@ const EnhancedCertificateManager = () => {
       .from('certificates')
       .select(`
         *,
-        profiles!inner(full_name, email),
+        users!inner(
+          profiles(full_name, email)
+        ),
         courses!inner(title)
       `)
       .eq('course_id', courseId)
@@ -148,7 +152,7 @@ const EnhancedCertificateManager = () => {
     let html = template.html_content;
     
     // Replace template variables
-    html = html.replace(/{{student_name}}/g, certificate.profiles?.full_name || 'Student');
+    html = html.replace(/{{student_name}}/g, certificate.users?.profiles?.full_name || 'Student');
     html = html.replace(/{{course_title}}/g, certificate.courses?.title || 'Course');
     html = html.replace(/{{completion_date}}/g, new Date(certificate.issued_at).toLocaleDateString());
     html = html.replace(/{{instructor_name}}/g, user?.email || 'Instructor');
@@ -242,7 +246,7 @@ const EnhancedCertificateManager = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h4 className="font-medium">
-                                {certificate.profiles?.full_name || certificate.profiles?.email}
+                                {certificate.users?.profiles?.full_name || certificate.users?.profiles?.email}
                               </h4>
                               <Badge variant="default">
                                 <Award className="h-3 w-3 mr-1" />
