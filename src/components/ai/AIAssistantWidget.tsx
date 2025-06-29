@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Bot, X, MessageSquare } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import AILearningAssistant from './AILearningAssistant';
 
 interface AIAssistantWidgetProps {
@@ -15,6 +16,44 @@ const AIAssistantWidget: React.FC<AIAssistantWidgetProps> = ({
   studentProgress
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isAIEnabled, setIsAIEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAIAvailability();
+  }, [courseId]);
+
+  const checkAIAvailability = async () => {
+    if (!courseId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('ai_assistant_enabled')
+        .eq('id', courseId)
+        .single();
+
+      if (error) {
+        console.error('Error checking AI availability:', error);
+        setIsAIEnabled(false);
+      } else {
+        setIsAIEnabled(data?.ai_assistant_enabled ?? true);
+      }
+    } catch (error) {
+      console.error('Error checking AI availability:', error);
+      setIsAIEnabled(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Don't render if AI is disabled for this course or still loading
+  if (loading || !isAIEnabled) {
+    return null;
+  }
 
   return (
     <>

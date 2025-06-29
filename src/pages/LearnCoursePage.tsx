@@ -23,12 +23,18 @@ interface CourseContent {
   unlock_date?: string;
 }
 
+interface Course {
+  id: string;
+  title: string;
+  ai_assistant_enabled: boolean;
+}
+
 const LearnCoursePage = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [course, setCourse] = useState(null);
+  const [course, setCourse] = useState<Course | null>(null);
   const [content, setContent] = useState<CourseContent[]>([]);
   const [currentContentIndex, setCurrentContentIndex] = useState(0);
   const [isEnrolled, setIsEnrolled] = useState(false);
@@ -77,10 +83,10 @@ const LearnCoursePage = () => {
 
       setIsEnrolled(!!purchaseData);
 
-      // Fetch course details
+      // Fetch course details including AI settings
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
-        .select('*')
+        .select('id, title, ai_assistant_enabled')
         .eq('id', id)
         .single();
 
@@ -239,12 +245,14 @@ const LearnCoursePage = () => {
           </div>
           <DripContentViewer />
           
-          {/* AI Assistant Widget */}
-          <AIAssistantWidget 
-            courseId={id}
-            currentLesson="Course Overview"
-            studentProgress={0}
-          />
+          {/* AI Assistant Widget - only show if enabled for this course */}
+          {course.ai_assistant_enabled && (
+            <AIAssistantWidget 
+              courseId={id}
+              currentLesson="Course Overview"
+              studentProgress={0}
+            />
+          )}
         </div>
       </div>
     );
@@ -413,12 +421,14 @@ const LearnCoursePage = () => {
         </div>
       </div>
 
-      {/* AI Assistant Widget */}
-      <AIAssistantWidget 
-        courseId={id}
-        currentLesson={currentContent?.title}
-        studentProgress={currentProgress}
-      />
+      {/* AI Assistant Widget - only show if enabled for this course */}
+      {course.ai_assistant_enabled && (
+        <AIAssistantWidget 
+          courseId={id}
+          currentLesson={currentContent?.title}
+          studentProgress={currentProgress}
+        />
+      )}
     </div>
   );
 };

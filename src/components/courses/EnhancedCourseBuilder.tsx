@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, HelpCircle, FileText, Award, Clock, Layers, FileImage, TrendingUp } from 'lucide-react';
+import { BookOpen, HelpCircle, FileText, Award, Clock, Layers, FileImage, TrendingUp, Bot } from 'lucide-react';
 import QuizBuilder from '@/components/quizzes/QuizBuilder';
 import AssignmentBuilder from '@/components/assignments/AssignmentBuilder';
 import GradingInterface from '@/components/grading/GradingInterface';
@@ -10,6 +10,7 @@ import DripContentManager from '@/components/content/DripContentManager';
 import SectionManager from './SectionManager';
 import SyllabusBuilder from './SyllabusBuilder';
 import ProgressTracker from '@/components/instructor/ProgressTracker';
+import AISettingsManager from './AISettingsManager';
 
 const EnhancedCourseBuilder = () => {
   return (
@@ -20,7 +21,7 @@ const EnhancedCourseBuilder = () => {
       </div>
 
       <Tabs defaultValue="sections" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="sections" className="flex items-center gap-2">
             <Layers className="h-4 w-4" />
             Sections
@@ -52,6 +53,10 @@ const EnhancedCourseBuilder = () => {
           <TabsTrigger value="drip-content" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Drip Content
+          </TabsTrigger>
+          <TabsTrigger value="ai-settings" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            AI Assistant
           </TabsTrigger>
         </TabsList>
 
@@ -139,6 +144,17 @@ const EnhancedCourseBuilder = () => {
             </CardHeader>
             <CardContent>
               <DripContentManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ai-settings">
+          <Card>
+            <CardHeader>
+              <CardTitle>AI Assistant Configuration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AISettingsManager />
             </CardContent>
           </Card>
         </TabsContent>
