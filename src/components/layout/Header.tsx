@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { GraduationCap, User, LogOut, Plus, BookOpen, BarChart3, Users, TrendingUp } from 'lucide-react';
+import { GraduationCap, User, LogOut, BookOpen, TrendingUp, Menu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,122 +23,184 @@ const Header = () => {
   const isAdmin = userRole === 'admin';
 
   return (
-    <header className="border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <div className="edx-container">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
           <div 
-            className="flex items-center space-x-2 cursor-pointer" 
+            className="flex items-center space-x-3 cursor-pointer group" 
             onClick={() => navigate('/')}
           >
-            <div className="p-2 bg-blue-600 rounded-lg">
-              <GraduationCap className="h-6 w-6 text-white" />
+            <div className="p-2 bg-blue-600 rounded-lg group-hover:bg-blue-700 transition-colors">
+              <GraduationCap className="h-7 w-7 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">LearnHub</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">LearnHub</h1>
+              <p className="text-xs text-gray-500 -mt-1">Learn. Grow. Achieve.</p>
+            </div>
           </div>
-        </div>
 
-        <nav className="hidden md:flex items-center space-x-6">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate('/courses')}
-            className="text-gray-700 hover:text-blue-600"
-          >
-            <BookOpen className="h-4 w-4 mr-2" />
-            Courses
-          </Button>
-          
-          {(hasPermission('view_all_analytics') || hasPermission('view_student_progress')) && (
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center space-x-1">
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/analytics')}
-              className="text-gray-700 hover:text-blue-600"
+              onClick={() => navigate('/courses')}
+              className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-medium"
             >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Analytics
+              <BookOpen className="h-4 w-4 mr-2" />
+              Explore Courses
             </Button>
-          )}
-          
-          {isInstructor && (
-            <>
+            
+            {(hasPermission('view_all_analytics') || hasPermission('view_student_progress')) && (
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/analytics')}
+                className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-medium"
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Analytics
+              </Button>
+            )}
+            
+            {isInstructor && (
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/instructor/dashboard')}
-                className="text-gray-700 hover:text-blue-600"
+                className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-medium"
               >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Dashboard
+                Teach
               </Button>
+            )}
+
+            {isAdmin && (
               <Button 
                 variant="ghost" 
-                onClick={() => navigate('/instructor/courses/new')}
-                className="text-gray-700 hover:text-blue-600"
+                onClick={() => navigate('/admin/dashboard')}
+                className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-medium"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Course
+                Admin
               </Button>
-            </>
-          )}
+            )}
+          </nav>
 
-          {isAdmin && (
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/admin/dashboard')}
-              className="text-gray-700 hover:text-blue-600"
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Admin
-            </Button>
-          )}
-        </nav>
-
-        <div className="flex items-center space-x-4">
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-blue-100 text-blue-600">
-                      {user.email?.charAt(0).toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.email}</p>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {userRole || 'Student'}
-                    </p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/my-courses')}>
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  My Courses
-                </DropdownMenuItem>
-                {(hasPermission('view_all_analytics') || hasPermission('view_student_progress')) && (
-                  <DropdownMenuItem onClick={() => navigate('/analytics')}>
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    Learning Analytics
-                  </DropdownMenuItem>
+          {/* User Section */}
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center space-x-3">
+                {/* Create Course Button for Instructors */}
+                {isInstructor && (
+                  <Button 
+                    onClick={() => navigate('/instructor/courses/new')}
+                    className="hidden md:flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+                  >
+                    Create Course
+                  </Button>
                 )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button onClick={() => navigate('/auth')}>
-              Get Started
-            </Button>
-          )}
+
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                      <Avatar className="h-10 w-10 border-2 border-gray-200">
+                        <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
+                          {user.email?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 p-2" align="end">
+                    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg mb-2">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold text-lg">
+                          {user.email?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 truncate">{user.email}</p>
+                        <p className="text-sm text-gray-500 capitalize">
+                          {userRole || 'Student'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <DropdownMenuItem onClick={() => navigate('/profile')} className="py-2">
+                      <User className="mr-3 h-4 w-4" />
+                      Profile Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/my-courses')} className="py-2">
+                      <BookOpen className="mr-3 h-4 w-4" />
+                      My Courses
+                    </DropdownMenuItem>
+                    {(hasPermission('view_all_analytics') || hasPermission('view_student_progress')) && (
+                      <DropdownMenuItem onClick={() => navigate('/analytics')} className="py-2">
+                        <TrendingUp className="mr-3 h-4 w-4" />
+                        Learning Analytics
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator className="my-2" />
+                    <DropdownMenuItem onClick={signOut} className="py-2 text-red-600 focus:text-red-600">
+                      <LogOut className="mr-3 h-4 w-4" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate('/auth')}
+                  className="text-gray-700 hover:text-blue-600 font-medium"
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  onClick={() => navigate('/auth')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+                >
+                  Get Started
+                </Button>
+              </div>
+            )}
+
+            {/* Mobile Menu */}
+            <div className="lg:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  <DropdownMenuItem onClick={() => navigate('/courses')}>
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Explore Courses
+                  </DropdownMenuItem>
+                  {(hasPermission('view_all_analytics') || hasPermission('view_student_progress')) && (
+                    <DropdownMenuItem onClick={() => navigate('/analytics')}>
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      Analytics
+                    </DropdownMenuItem>
+                  )}
+                  {isInstructor && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate('/instructor/dashboard')}>
+                        Instructor Dashboard
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/instructor/courses/new')}>
+                        Create Course
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
+                      Admin Panel
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
         </div>
       </div>
     </header>
