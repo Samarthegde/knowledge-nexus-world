@@ -528,7 +528,7 @@ const PublicCoursePage = () => {
       {showRatingForm && (
         <CourseRatingForm
           courseId={course.id}
-          onClose={() => setShowRatingForm(false)}
+          onRatingSubmitted={() => setShowRatingForm(false)}
         />
       )}
     </div>
