@@ -48,7 +48,7 @@ const SiteCustomization = () => {
   const fetchSiteSettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('site_settings' as any)
+        .from('site_settings')
         .select('*')
         .single();
 
@@ -64,7 +64,7 @@ const SiteCustomization = () => {
     setIsLoading(true);
     try {
       const { error } = await supabase
-        .from('site_settings' as any)
+        .from('site_settings')
         .upsert(settings);
 
       if (error) throw error;

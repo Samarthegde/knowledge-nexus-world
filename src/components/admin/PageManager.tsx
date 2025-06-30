@@ -54,12 +54,12 @@ const PageManager = () => {
   const fetchPages = async () => {
     try {
       const { data, error } = await supabase
-        .from('custom_pages' as any)
+        .from('custom_pages')
         .select('*')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setPages(data as CustomPage[] || []);
+      setPages(data || []);
     } catch (error) {
       toast({
         title: "Error",
@@ -84,7 +84,7 @@ const PageManager = () => {
       if (selectedPage) {
         // Update existing page
         const { error } = await supabase
-          .from('custom_pages' as any)
+          .from('custom_pages')
           .update({
             ...formData,
             updated_at: new Date().toISOString()
@@ -100,7 +100,7 @@ const PageManager = () => {
       } else {
         // Create new page
         const { error } = await supabase
-          .from('custom_pages' as any)
+          .from('custom_pages')
           .insert([formData]);
 
         if (error) throw error;
@@ -129,7 +129,7 @@ const PageManager = () => {
 
     try {
       const { error } = await supabase
-        .from('custom_pages' as any)
+        .from('custom_pages')
         .delete()
         .eq('id', pageId);
 

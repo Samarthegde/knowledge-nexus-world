@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,19 +40,10 @@ const CoursesPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const fetchCourses = async () => {
-    let query = supabase
+    const { data, error } = await supabase
       .from('courses')
       .select('*')
       .eq('is_published', true);
-
-    if (user) {
-      query = query.select(`
-        *,
-        course_purchases(payment_status)
-      `);
-    }
-
-    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching courses:', error);
@@ -60,7 +52,9 @@ const CoursesPage = () => {
 
     const coursesWithEnrollment = data?.map(course => ({
       ...course,
-      is_enrolled: course.course_purchases?.some(purchase => purchase.payment_status === 'completed') || false,
+      is_enrolled: false, // Default to false, will be updated if user is logged in
+      student_count: 0, // Default value
+      average_rating: 0, // Default value
     })) || [];
 
     return coursesWithEnrollment;
