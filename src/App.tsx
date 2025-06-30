@@ -16,6 +16,7 @@ import CreateCoursePage from "@/pages/CreateCoursePage";
 import CourseViewPage from "@/pages/CourseViewPage";
 import EditCoursePage from "@/pages/EditCoursePage";
 import PublicCoursePage from "@/pages/PublicCoursePage";
+import CoursePurchasePage from "@/pages/CoursePurchasePage";
 import PaymentSuccessPage from "@/pages/PaymentSuccessPage";
 import LearnCoursePage from "@/pages/LearnCoursePage";
 import TestingPage from "@/pages/TestingPage";
@@ -40,6 +41,7 @@ const App = () => (
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/courses" element={<CoursesPage />} />
                 <Route path="/course/:slug" element={<PublicCoursePage />} />
+                <Route path="/course/:slug/purchase" element={<CoursePurchasePage />} />
                 <Route path="/learn/:id" element={<LearnCoursePage />} />
                 <Route path="/payment-success" element={<PaymentSuccessPage />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
