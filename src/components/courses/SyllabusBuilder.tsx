@@ -57,7 +57,20 @@ const SyllabusBuilder = () => {
     }
 
     if (data?.syllabus) {
-      setSyllabus(data.syllabus as Syllabus);
+      // Safely parse the JSON data with proper type checking
+      try {
+        const parsedSyllabus = data.syllabus as unknown as Syllabus;
+        if (parsedSyllabus && typeof parsedSyllabus === 'object') {
+          setSyllabus({
+            overview: parsedSyllabus.overview || '',
+            prerequisites: Array.isArray(parsedSyllabus.prerequisites) ? parsedSyllabus.prerequisites : [],
+            learningOutcomes: Array.isArray(parsedSyllabus.learningOutcomes) ? parsedSyllabus.learningOutcomes : [],
+            items: Array.isArray(parsedSyllabus.items) ? parsedSyllabus.items : []
+          });
+        }
+      } catch (err) {
+        console.error('Error parsing syllabus data:', err);
+      }
     }
     setLoading(false);
   };
@@ -65,9 +78,17 @@ const SyllabusBuilder = () => {
   const saveSyllabus = async () => {
     if (!courseId) return;
 
+    // Convert Syllabus to JSON-compatible format
+    const syllabusData = {
+      overview: syllabus.overview,
+      prerequisites: syllabus.prerequisites,
+      learningOutcomes: syllabus.learningOutcomes,
+      items: syllabus.items
+    };
+
     const { error } = await supabase
       .from('courses')
-      .update({ syllabus })
+      .update({ syllabus: syllabusData as any })
       .eq('id', courseId);
 
     if (error) {
