@@ -2,9 +2,11 @@
 import React from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import RoleManagement from '@/components/admin/RoleManagement';
+import SiteCustomization from '@/components/admin/SiteCustomization';
+import PageManager from '@/components/admin/PageManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Users, BookOpen, BarChart3, Settings } from 'lucide-react';
+import { Shield, Users, BookOpen, BarChart3, Settings, Palette, FileText } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { hasPermission } = usePermissions();
@@ -32,7 +34,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             {hasPermission('manage_users') && (
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
@@ -49,6 +51,18 @@ const AdminDashboard = () => {
               <TabsTrigger value="courses" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
                 Courses
+              </TabsTrigger>
+            )}
+            {hasPermission('manage_platform_settings') && (
+              <TabsTrigger value="customization" className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Customize
+              </TabsTrigger>
+            )}
+            {hasPermission('manage_platform_settings') && (
+              <TabsTrigger value="pages" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Pages
               </TabsTrigger>
             )}
             {hasPermission('manage_platform_settings') && (
@@ -88,6 +102,18 @@ const AdminDashboard = () => {
                   <p className="text-gray-600">Course management tools coming soon...</p>
                 </CardContent>
               </Card>
+            </TabsContent>
+          )}
+
+          {hasPermission('manage_platform_settings') && (
+            <TabsContent value="customization" className="space-y-6">
+              <SiteCustomization />
+            </TabsContent>
+          )}
+
+          {hasPermission('manage_platform_settings') && (
+            <TabsContent value="pages" className="space-y-6">
+              <PageManager />
             </TabsContent>
           )}
 
