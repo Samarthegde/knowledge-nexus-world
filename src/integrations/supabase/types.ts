@@ -646,6 +646,39 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_pages: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          is_published: boolean | null
+          meta_description: string | null
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       discussions: {
         Row: {
           content: string
@@ -1105,6 +1138,39 @@ export type Database = {
             referencedColumns: ["course_id"]
           },
         ]
+      }
+      site_settings: {
+        Row: {
+          created_at: string
+          favicon_url: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          site_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          favicon_url?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          site_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          favicon_url?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          site_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       student_progress: {
         Row: {

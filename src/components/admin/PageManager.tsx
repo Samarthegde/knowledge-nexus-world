@@ -54,12 +54,12 @@ const PageManager = () => {
   const fetchPages = async () => {
     try {
       const { data, error } = await supabase
-        .from('custom_pages')
+        .from('custom_pages' as any)
         .select('*')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setPages(data || []);
+      setPages(data as CustomPage[] || []);
     } catch (error) {
       toast({
         title: "Error",
@@ -84,7 +84,7 @@ const PageManager = () => {
       if (selectedPage) {
         // Update existing page
         const { error } = await supabase
-          .from('custom_pages')
+          .from('custom_pages' as any)
           .update({
             ...formData,
             updated_at: new Date().toISOString()
@@ -100,7 +100,7 @@ const PageManager = () => {
       } else {
         // Create new page
         const { error } = await supabase
-          .from('custom_pages')
+          .from('custom_pages' as any)
           .insert([formData]);
 
         if (error) throw error;
@@ -129,7 +129,7 @@ const PageManager = () => {
 
     try {
       const { error } = await supabase
-        .from('custom_pages')
+        .from('custom_pages' as any)
         .delete()
         .eq('id', pageId);
 
@@ -253,7 +253,7 @@ const PageManager = () => {
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Globe className="h-4 w-4" />
-                            /{page.slug}
+                            /pages/{page.slug}
                           </span>
                           <span className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
