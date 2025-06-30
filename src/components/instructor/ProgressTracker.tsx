@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,39 +42,55 @@ const ProgressTracker = () => {
     if (!courseId) return;
 
     try {
-      // Fetch detailed student progress
-      const { data: progressData, error: progressError } = await supabase
-        .from('course_progress_analytics')
-        .select(`
-          *,
-          profiles!course_progress_analytics_user_id_fkey(full_name, email)
-        `)
-        .eq('course_id', courseId);
+      // Get unique students from course_purchases or enrollments
+      const { data: enrollments, error: enrollmentError } = await supabase
+        .from('course_purchases')
+        .select('user_id')
+        .eq('course_id', courseId)
+        .eq('payment_status', 'completed');
 
-      if (progressError) throw progressError;
+      if (enrollmentError) throw enrollmentError;
 
-      // Check for certificates
-      const { data: certificates, error: certError } = await supabase
-        .from('certificates')
-        .select('student_id')
-        .eq('course_id', courseId);
+      if (!enrollments || enrollments.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-      if (certError) throw certError;
+      const studentIds = enrollments.map(e => e.user_id).filter(Boolean);
 
-      const certificateStudents = new Set(certificates?.map(c => c.student_id) || []);
+      // Get student progress for each student
+      const progressPromises = studentIds.map(async (studentId) => {
+        const [profileResult, progressResult, certificateResult] = await Promise.all([
+          supabase.from('profiles').select('full_name, email').eq('id', studentId).single(),
+          supabase.from('student_progress').select('*').eq('user_id', studentId).eq('course_id', courseId),
+          supabase.from('certificates').select('id').eq('student_id', studentId).eq('course_id', courseId).single()
+        ]);
 
-      const formattedProgress: StudentProgress[] = progressData?.map(p => ({
-        user_id: p.user_id,
-        student_name: p.profiles?.full_name || 'Unknown',
-        student_email: p.profiles?.email || '',
-        total_content_accessed: p.total_content_accessed || 0,
-        completed_content: p.completed_content || 0,
-        average_progress: p.average_progress || 0,
-        total_time_spent: p.total_time_spent || 0,
-        last_activity: p.last_activity,
-        has_certificate: certificateStudents.has(p.user_id)
-      })) || [];
+        const progressRecords = progressResult.data || [];
+        const totalProgress = progressRecords.length > 0 
+          ? progressRecords.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / progressRecords.length
+          : 0;
 
+        const totalTime = progressRecords.reduce((sum, p) => sum + (p.time_spent_seconds || 0), 0);
+        const completedCount = progressRecords.filter(p => p.completed_at).length;
+        const lastActivity = progressRecords.length > 0 
+          ? Math.max(...progressRecords.map(p => new Date(p.updated_at).getTime()))
+          : Date.now();
+
+        return {
+          user_id: studentId,
+          student_name: profileResult.data?.full_name || 'Unknown',
+          student_email: profileResult.data?.email || '',
+          total_content_accessed: progressRecords.length,
+          completed_content: completedCount,
+          average_progress: totalProgress,
+          total_time_spent: totalTime,
+          last_activity: new Date(lastActivity).toISOString(),
+          has_certificate: !certificateResult.error && certificateResult.data !== null
+        };
+      });
+
+      const formattedProgress = await Promise.all(progressPromises);
       setProgressData(formattedProgress);
 
       // Calculate course stats
@@ -82,7 +99,7 @@ const ProgressTracker = () => {
         averageCompletion: formattedProgress.length > 0 
           ? formattedProgress.reduce((sum, p) => sum + p.average_progress, 0) / formattedProgress.length 
           : 0,
-        certificatesIssued: certificates?.length || 0,
+        certificatesIssued: formattedProgress.filter(p => p.has_certificate).length,
         totalTimeSpent: formattedProgress.reduce((sum, p) => sum + p.total_time_spent, 0)
       };
 

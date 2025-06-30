@@ -16,13 +16,9 @@ type Certificate = Tables<'certificates'>;
 type CertificateTemplate = Tables<'certificate_templates'>;
 
 interface CertificateWithStudent extends Certificate {
-  student_profiles?: {
-    full_name: string | null;
-    email: string;
-  };
-  courses?: {
-    title: string;
-  };
+  student_name?: string;
+  student_email?: string;
+  course_title?: string;
 }
 
 const EnhancedCertificateManager = () => {
@@ -47,28 +43,44 @@ const EnhancedCertificateManager = () => {
   const fetchCertificates = async () => {
     if (!courseId) return;
 
-    const { data, error } = await supabase
-      .from('certificates')
-      .select(`
-        *,
-        student_profiles:profiles(full_name, email),
-        courses!inner(title)
-      `)
-      .eq('course_id', courseId)
-      .order('issued_at', { ascending: false });
+    try {
+      // Fetch certificates
+      const { data: certificatesData, error: certError } = await supabase
+        .from('certificates')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('issued_at', { ascending: false });
 
-    if (error) {
+      if (certError) throw certError;
+
+      // Fetch related data separately
+      const enrichedCertificates = await Promise.all(
+        (certificatesData || []).map(async (cert) => {
+          const [profileResult, courseResult] = await Promise.all([
+            supabase.from('profiles').select('full_name, email').eq('id', cert.student_id).single(),
+            supabase.from('courses').select('title').eq('id', cert.course_id).single()
+          ]);
+
+          return {
+            ...cert,
+            student_name: profileResult.data?.full_name || 'Unknown',
+            student_email: profileResult.data?.email || '',
+            course_title: courseResult.data?.title || 'Course'
+          };
+        })
+      );
+
+      setCertificates(enrichedCertificates);
+    } catch (error) {
       console.error('Error fetching certificates:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch certificates',
         variant: 'destructive'
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    setCertificates(data || []);
-    setLoading(false);
   };
 
   const fetchTemplates = async () => {
@@ -145,16 +157,14 @@ const EnhancedCertificateManager = () => {
   };
 
   const generateCertificatePDF = async (certificate: CertificateWithStudent) => {
-    // This would integrate with a PDF generation service
-    // For now, we'll create a simple HTML preview
     const template = templates.find(t => t.id === certificate.template_id);
     if (!template) return;
 
     let html = template.html_content;
     
     // Replace template variables
-    html = html.replace(/{{student_name}}/g, certificate.student_profiles?.full_name || 'Student');
-    html = html.replace(/{{course_title}}/g, certificate.courses?.title || 'Course');
+    html = html.replace(/{{student_name}}/g, certificate.student_name || 'Student');
+    html = html.replace(/{{course_title}}/g, certificate.course_title || 'Course');
     html = html.replace(/{{completion_date}}/g, new Date(certificate.issued_at).toLocaleDateString());
     html = html.replace(/{{instructor_name}}/g, user?.email || 'Instructor');
 
@@ -247,7 +257,7 @@ const EnhancedCertificateManager = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h4 className="font-medium">
-                                {certificate.student_profiles?.full_name || certificate.student_profiles?.email}
+                                {certificate.student_name || certificate.student_email}
                               </h4>
                               <Badge variant="default">
                                 <Award className="h-3 w-3 mr-1" />
@@ -255,18 +265,15 @@ const EnhancedCertificateManager = () => {
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-600 mb-1">
-                              Course: {certificate.courses?.title}
+                              Course: {certificate.course_title}
                             </p>
                             <p className="text-sm text-gray-500">
                               Issued: {new Date(certificate.issued_at).toLocaleDateString()}
                             </p>
                             
-                            {certificate.certificate_data && (
+                            {certificate.certificate_data && typeof certificate.certificate_data === 'object' && (
                               <div className="mt-2 text-xs text-gray-500">
-                                <p>Completion: {new Date(certificate.certificate_data.completion_date).toLocaleDateString()}</p>
-                                {certificate.certificate_data.total_time_spent && (
-                                  <p>Time spent: {Math.round(certificate.certificate_data.total_time_spent / 3600)}h</p>
-                                )}
+                                <p>Certificate ID: {certificate.id}</p>
                               </div>
                             )}
                           </div>

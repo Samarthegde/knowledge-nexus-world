@@ -12,11 +12,15 @@ import { Tables } from '@/integrations/supabase/types';
 
 type Section = Tables<'sections'>;
 
+interface SectionWithDescription extends Section {
+  description?: string;
+}
+
 const SectionManager = () => {
   const { id: courseId } = useParams();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [sections, setSections] = useState<Section[]>([]);
+  const [sections, setSections] = useState<SectionWithDescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [newSection, setNewSection] = useState({ title: '', description: '' });
@@ -39,7 +43,13 @@ const SectionManager = () => {
       return;
     }
 
-    setSections(data || []);
+    // Add description field for compatibility
+    const sectionsWithDescription = (data || []).map(section => ({
+      ...section,
+      description: '' // Default empty description since it doesn't exist in DB yet
+    }));
+
+    setSections(sectionsWithDescription);
     setLoading(false);
   };
 
@@ -51,7 +61,6 @@ const SectionManager = () => {
       .insert({
         course_id: courseId,
         title: newSection.title,
-        description: newSection.description,
         order_index: sections.length
       })
       .select()
@@ -67,7 +76,7 @@ const SectionManager = () => {
       return;
     }
 
-    setSections([...sections, data]);
+    setSections([...sections, { ...data, description: '' }]);
     setNewSection({ title: '', description: '' });
     toast({
       title: 'Success',
@@ -75,10 +84,15 @@ const SectionManager = () => {
     });
   };
 
-  const updateSection = async (sectionId: string, updates: Partial<Section>) => {
+  const updateSection = async (sectionId: string, updates: Partial<SectionWithDescription>) => {
+    // Only update fields that exist in the database
+    const dbUpdates: any = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.order_index !== undefined) dbUpdates.order_index = updates.order_index;
+
     const { error } = await supabase
       .from('sections')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', sectionId);
 
     if (error) {
@@ -122,29 +136,6 @@ const SectionManager = () => {
     });
   };
 
-  const reorderSections = async (dragIndex: number, hoverIndex: number) => {
-    const draggedSection = sections[dragIndex];
-    const newSections = [...sections];
-    newSections.splice(dragIndex, 1);
-    newSections.splice(hoverIndex, 0, draggedSection);
-
-    // Update order_index for all sections
-    const updates = newSections.map((section, index) => ({
-      id: section.id,
-      order_index: index
-    }));
-
-    setSections(newSections);
-
-    // Update in database
-    for (const update of updates) {
-      await supabase
-        .from('sections')
-        .update({ order_index: update.order_index })
-        .eq('id', update.id);
-    }
-  };
-
   if (loading) return <div>Loading sections...</div>;
 
   return (
@@ -165,9 +156,10 @@ const SectionManager = () => {
             onChange={(e) => setNewSection({ ...newSection, title: e.target.value })}
           />
           <Textarea
-            placeholder="Section Description (optional)"
+            placeholder="Section Description (optional - not saved to database yet)"
             value={newSection.description}
             onChange={(e) => setNewSection({ ...newSection, description: e.target.value })}
+            disabled
           />
           <Button onClick={createSection} disabled={!newSection.title.trim()}>
             <Plus className="h-4 w-4 mr-2" />
@@ -194,17 +186,18 @@ const SectionManager = () => {
                           ))}
                         />
                         <Textarea
+                          placeholder="Description (not saved to database yet)"
                           value={section.description || ''}
                           onChange={(e) => setSections(sections.map(s => 
                             s.id === section.id ? { ...s, description: e.target.value } : s
                           ))}
+                          disabled
                         />
                         <div className="flex space-x-2">
                           <Button 
                             size="sm" 
                             onClick={() => updateSection(section.id, {
-                              title: section.title,
-                              description: section.description
+                              title: section.title
                             })}
                           >
                             <Save className="h-4 w-4 mr-2" />
@@ -222,9 +215,6 @@ const SectionManager = () => {
                     ) : (
                       <div>
                         <h3 className="font-semibold text-lg">{section.title}</h3>
-                        {section.description && (
-                          <p className="text-gray-600 mt-1">{section.description}</p>
-                        )}
                         <p className="text-sm text-gray-500 mt-2">
                           Order: {section.order_index + 1}
                         </p>

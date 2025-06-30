@@ -17,15 +17,26 @@ type Assignment = Tables<'assignments'>;
 type AssignmentSubmission = Tables<'assignment_submissions'>;
 type QuizAttempt = Tables<'quiz_attempts'>;
 
+interface SubmissionWithDetails extends AssignmentSubmission {
+  assignment_title?: string;
+  student_name?: string;
+  student_email?: string;
+}
+
+interface QuizAttemptWithDetails extends QuizAttempt {
+  quiz_title?: string;
+  student_name?: string;
+  student_email?: string;
+}
+
 const GradingInterface = () => {
   const { id: courseId } = useParams();
   const { user } = useAuth();
   const { toast } = useToast();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
-  const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionWithDetails[]>([]);
+  const [quizAttempts, setQuizAttempts] = useState<QuizAttemptWithDetails[]>([]);
   const [selectedType, setSelectedType] = useState<'assignments' | 'quizzes'>('assignments');
-  const [selectedItem, setSelectedItem] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,61 +54,98 @@ const GradingInterface = () => {
   };
 
   const fetchAssignments = async () => {
-    const { data: assignmentData, error: assignmentError } = await supabase
-      .from('assignments')
-      .select('*')
-      .eq('course_id', courseId)
-      .order('created_at', { ascending: false });
+    try {
+      const { data: assignmentData, error: assignmentError } = await supabase
+        .from('assignments')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('created_at', { ascending: false });
 
-    if (assignmentError) {
-      console.error('Error fetching assignments:', assignmentError);
-      return;
-    }
+      if (assignmentError) throw assignmentError;
+      setAssignments(assignmentData || []);
 
-    setAssignments(assignmentData || []);
+      if (assignmentData && assignmentData.length > 0) {
+        const assignmentIds = assignmentData.map(a => a.id);
+        
+        const { data: submissionData, error: submissionError } = await supabase
+          .from('assignment_submissions')
+          .select('*')
+          .in('assignment_id', assignmentIds)
+          .order('submitted_at', { ascending: false });
 
-    if (assignmentData && assignmentData.length > 0) {
-      const assignmentIds = assignmentData.map(a => a.id);
-      
-      const { data: submissionData, error: submissionError } = await supabase
-        .from('assignment_submissions')
-        .select(`
-          *,
-          assignments!inner(title),
-          profiles!assignment_submissions_student_id_fkey(full_name, email)
-        `)
-        .in('assignment_id', assignmentIds)
-        .order('submitted_at', { ascending: false });
+        if (submissionError) throw submissionError;
 
-      if (submissionError) {
-        console.error('Error fetching submissions:', submissionError);
-        return;
+        // Enrich submissions with assignment and student data
+        const enrichedSubmissions = await Promise.all(
+          (submissionData || []).map(async (submission) => {
+            const [assignmentResult, profileResult] = await Promise.all([
+              supabase.from('assignments').select('title').eq('id', submission.assignment_id).single(),
+              supabase.from('profiles').select('full_name, email').eq('id', submission.student_id).single()
+            ]);
+
+            return {
+              ...submission,
+              assignment_title: assignmentResult.data?.title || 'Assignment',
+              student_name: profileResult.data?.full_name || 'Unknown',
+              student_email: profileResult.data?.email || ''
+            };
+          })
+        );
+
+        setSubmissions(enrichedSubmissions);
       }
-
-      setSubmissions(submissionData || []);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const fetchQuizAttempts = async () => {
-    const { data, error } = await supabase
-      .from('quiz_attempts')
-      .select(`
-        *,
-        quizzes!inner(title, course_id),
-        profiles!quiz_attempts_student_id_fkey(full_name, email)
-      `)
-      .eq('quizzes.course_id', courseId)
-      .order('started_at', { ascending: false });
+    try {
+      // First get quizzes for this course
+      const { data: quizData, error: quizError } = await supabase
+        .from('quizzes')
+        .select('id, title')
+        .eq('course_id', courseId);
 
-    if (error) {
+      if (quizError) throw quizError;
+
+      if (quizData && quizData.length > 0) {
+        const quizIds = quizData.map(q => q.id);
+        
+        const { data: attemptData, error: attemptError } = await supabase
+          .from('quiz_attempts')
+          .select('*')
+          .in('quiz_id', quizIds)
+          .order('started_at', { ascending: false });
+
+        if (attemptError) throw attemptError;
+
+        // Enrich attempts with quiz and student data
+        const enrichedAttempts = await Promise.all(
+          (attemptData || []).map(async (attempt) => {
+            const [quizResult, profileResult] = await Promise.all([
+              supabase.from('quizzes').select('title').eq('id', attempt.quiz_id).single(),
+              supabase.from('profiles').select('full_name, email').eq('id', attempt.student_id).single()
+            ]);
+
+            return {
+              ...attempt,
+              quiz_title: quizResult.data?.title || 'Quiz',
+              student_name: profileResult.data?.full_name || 'Unknown',
+              student_email: profileResult.data?.email || ''
+            };
+          })
+        );
+
+        setQuizAttempts(enrichedAttempts);
+      }
+    } catch (error) {
       console.error('Error fetching quiz attempts:', error);
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    setQuizAttempts(data || []);
-    setLoading(false);
   };
 
   const gradeSubmission = async (submissionId: string, score: number, feedback: string) => {
@@ -129,14 +177,14 @@ const GradingInterface = () => {
     fetchAssignments();
   };
 
-  const getStatusBadge = (submission: AssignmentSubmission) => {
+  const getStatusBadge = (submission: SubmissionWithDetails) => {
     if (submission.score !== null) {
       return <Badge variant="default">Graded</Badge>;
     }
     return <Badge variant="secondary">Pending</Badge>;
   };
 
-  const getQuizStatusBadge = (attempt: QuizAttempt) => {
+  const getQuizStatusBadge = (attempt: QuizAttemptWithDetails) => {
     if (attempt.passed) {
       return <Badge variant="default">Passed</Badge>;
     } else if (attempt.score !== null) {
@@ -179,11 +227,11 @@ const GradingInterface = () => {
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-medium">{submission.assignments?.title}</h4>
+                              <h4 className="font-medium">{submission.assignment_title}</h4>
                               {getStatusBadge(submission)}
                             </div>
                             <p className="text-sm text-gray-600">
-                              Student: {submission.profiles?.full_name || submission.profiles?.email}
+                              Student: {submission.student_name || submission.student_email}
                             </p>
                             <p className="text-sm text-gray-500">
                               Submitted: {new Date(submission.submitted_at).toLocaleString()}
@@ -259,11 +307,11 @@ const GradingInterface = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-medium">{attempt.quizzes?.title}</h4>
+                            <h4 className="font-medium">{attempt.quiz_title}</h4>
                             {getQuizStatusBadge(attempt)}
                           </div>
                           <p className="text-sm text-gray-600">
-                            Student: {attempt.profiles?.full_name || attempt.profiles?.email}
+                            Student: {attempt.student_name || attempt.student_email}
                           </p>
                           <p className="text-sm text-gray-500">
                             Started: {new Date(attempt.started_at).toLocaleString()}
@@ -273,7 +321,7 @@ const GradingInterface = () => {
                               Submitted: {new Date(attempt.submitted_at).toLocaleString()}
                             </p>
                           )}
-                          {attempt.score !== null && (
+                          {attempt.score !== null && attempt.max_score && (
                             <p className="text-sm font-medium mt-2">
                               Score: {attempt.score}/{attempt.max_score} ({Math.round((attempt.score / attempt.max_score) * 100)}%)
                             </p>
@@ -293,7 +341,7 @@ const GradingInterface = () => {
 };
 
 interface GradingFormProps {
-  submission: AssignmentSubmission;
+  submission: SubmissionWithDetails;
   onGrade: (submissionId: string, score: number, feedback: string) => void;
 }
 

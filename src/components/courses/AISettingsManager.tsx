@@ -57,9 +57,17 @@ const AISettingsManager = () => {
       if (error) throw error;
 
       if (data) {
+        const aiSettings = data.ai_assistant_settings;
+        
         setSettings({
           ai_assistant_enabled: data.ai_assistant_enabled ?? true,
-          ai_assistant_settings: data.ai_assistant_settings || {
+          ai_assistant_settings: typeof aiSettings === 'object' && aiSettings !== null ? {
+            response_style: (aiSettings as any).response_style || 'encouraging',
+            max_response_length: (aiSettings as any).max_response_length || 'medium',
+            custom_instructions: (aiSettings as any).custom_instructions || '',
+            topics_allowed: (aiSettings as any).topics_allowed || [],
+            topics_restricted: (aiSettings as any).topics_restricted || []
+          } : {
             response_style: 'encouraging',
             max_response_length: 'medium',
             topics_allowed: [],
