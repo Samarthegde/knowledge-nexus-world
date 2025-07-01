@@ -99,29 +99,53 @@ const LearnCoursePage = () => {
         return;
       }
 
-      // Fetch all course content directly (without RPC for debugging)
-      const { data: allContentData, error: contentError } = await supabase
+      // Try to fetch content with RLS bypassing for debugging
+      console.log('Attempting to fetch course content...');
+      
+      // First, let's try with the original query to see the RLS issue
+      const { data: contentData, error: contentError } = await supabase
         .from('course_content')
         .select('*')
         .eq('course_id', id)
         .order('order_index');
 
+      console.log('Content query result:', { contentData, contentError });
+
       if (contentError) {
         console.error('Error fetching course content:', contentError);
-        throw contentError;
+        
+        // Try alternative approach - check if user has access to free content
+        const { data: freeContentData, error: freeContentError } = await supabase
+          .from('course_content')
+          .select('*')
+          .eq('course_id', id)
+          .eq('is_free', true)
+          .order('order_index');
+        
+        console.log('Free content query result:', { freeContentData, freeContentError });
+        
+        if (freeContentData && freeContentData.length > 0) {
+          const accessibleContent = freeContentData.map(item => ({
+            ...item,
+            is_unlocked: true,
+            unlock_date: null
+          }));
+          console.log('Using free content:', accessibleContent);
+          setContent(accessibleContent);
+        } else {
+          setContent([]);
+        }
+      } else {
+        // Success with original query
+        const accessibleContent = contentData?.map(item => ({
+          ...item,
+          is_unlocked: true,
+          unlock_date: null
+        })) || [];
+        
+        console.log('Using all content:', accessibleContent);
+        setContent(accessibleContent);
       }
-
-      console.log('All content data:', allContentData);
-
-      // For now, make all content accessible (we'll fix drip content later)
-      const accessibleContent = allContentData?.map(item => ({
-        ...item,
-        is_unlocked: true,
-        unlock_date: null
-      })) || [];
-
-      console.log('Accessible content:', accessibleContent);
-      setContent(accessibleContent);
 
       // Fetch user progress
       const { data: progressData } = await supabase
@@ -262,6 +286,13 @@ const LearnCoursePage = () => {
               <p className="text-gray-500 mb-4">
                 The instructor hasn't added any lessons to this course yet. Please check back later.
               </p>
+              <div className="text-sm text-gray-400 mt-4">
+                <p>Debug info:</p>
+                <p>Course ID: {id}</p>
+                <p>User ID: {user?.id}</p>
+                <p>Is Enrolled: {isEnrolled ? 'Yes' : 'No'}</p>
+                <p>Course Price: ${course.price || 0}</p>
+              </div>
               <Button onClick={() => navigate('/courses')} variant="outline">
                 Browse Other Courses
               </Button>
