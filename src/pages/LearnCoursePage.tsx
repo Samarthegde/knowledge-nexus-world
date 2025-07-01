@@ -27,6 +27,8 @@ interface Course {
   id: string;
   title: string;
   ai_assistant_enabled: boolean;
+  price: number;
+  is_published: boolean;
 }
 
 const LearnCoursePage = () => {
