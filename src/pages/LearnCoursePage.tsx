@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -96,7 +95,7 @@ const LearnCoursePage = () => {
           description: 'You need to purchase this course to access it',
           variant: 'destructive',
         });
-        navigate(`/course/${courseData.slug || id}`);
+        navigate(`/course/${id}`);
         return;
       }
 
