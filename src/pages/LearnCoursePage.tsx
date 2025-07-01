@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,85 +50,79 @@ const LearnCoursePage = () => {
 
   const checkEnrollmentAndFetchContent = async () => {
     try {
-      // Check if user is enrolled
-      const { data: purchaseData, error: purchaseError } = await supabase
-        .from('course_purchases')
-        .select('*')
-        .eq('course_id', id)
-        .eq('user_id', user.id)
-        .eq('payment_status', 'completed')
-        .single();
+      console.log('Checking enrollment for course:', id, 'user:', user.id);
 
-      if (purchaseError && purchaseError.code !== 'PGRST116') {
-        throw purchaseError;
-      }
-
-      if (!purchaseData) {
-        // Check if user can access free content
-        const { data: courseData } = await supabase
-          .from('courses')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (courseData?.price > 0) {
-          toast({
-            title: 'Access Denied',
-            description: 'You need to purchase this course to access it',
-            variant: 'destructive',
-          });
-          navigate(`/course/${courseData.slug}`);
-          return;
-        }
-      }
-
-      setIsEnrolled(!!purchaseData);
-
-      // Fetch course details including AI settings
+      // First, fetch course details
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
-        .select('id, title, ai_assistant_enabled')
+        .select('id, title, ai_assistant_enabled, price, is_published')
         .eq('id', id)
         .single();
 
-      if (courseError) throw courseError;
+      if (courseError) {
+        console.error('Error fetching course:', courseError);
+        throw courseError;
+      }
+
+      console.log('Course data:', courseData);
       setCourse(courseData);
 
-      // Fetch unlocked content using the RPC function
-      const { data: unlockedContent, error: contentError } = await supabase
-        .rpc('get_unlocked_content', {
-          p_user_id: user.id,
-          p_course_id: id
-        });
-
-      if (contentError) throw contentError;
-
-      // Fetch full content details for unlocked items
-      const contentIds = unlockedContent
-        .filter((item: any) => item.is_unlocked)
-        .map((item: any) => item.content_id);
-
-      if (contentIds.length > 0) {
-        const { data: fullContentData, error: fullContentError } = await supabase
-          .from('course_content')
+      // Check if user has purchased the course (for paid courses)
+      let hasAccess = false;
+      if (courseData?.price > 0) {
+        const { data: purchaseData, error: purchaseError } = await supabase
+          .from('course_purchases')
           .select('*')
-          .in('id', contentIds)
-          .order('order_index');
+          .eq('course_id', id)
+          .eq('user_id', user.id)
+          .eq('payment_status', 'completed');
 
-        if (fullContentError) throw fullContentError;
+        if (purchaseError) {
+          console.error('Error checking purchase:', purchaseError);
+        }
 
-        // Merge unlock status with content data
-        const contentWithUnlockStatus = fullContentData.map(contentItem => {
-          const unlockInfo = unlockedContent.find((u: any) => u.content_id === contentItem.id);
-          return {
-            ...contentItem,
-            is_unlocked: unlockInfo?.is_unlocked || false,
-            unlock_date: unlockInfo?.unlock_date
-          };
-        });
-
-        setContent(contentWithUnlockStatus || []);
+        console.log('Purchase data:', purchaseData);
+        hasAccess = purchaseData && purchaseData.length > 0;
+        setIsEnrolled(hasAccess);
+      } else {
+        // Free course - user has access
+        hasAccess = true;
+        setIsEnrolled(true);
       }
+
+      if (!hasAccess && courseData?.price > 0) {
+        toast({
+          title: 'Access Denied',
+          description: 'You need to purchase this course to access it',
+          variant: 'destructive',
+        });
+        navigate(`/course/${courseData.slug || id}`);
+        return;
+      }
+
+      // Fetch all course content directly (without RPC for debugging)
+      const { data: allContentData, error: contentError } = await supabase
+        .from('course_content')
+        .select('*')
+        .eq('course_id', id)
+        .order('order_index');
+
+      if (contentError) {
+        console.error('Error fetching course content:', contentError);
+        throw contentError;
+      }
+
+      console.log('All content data:', allContentData);
+
+      // For now, make all content accessible (we'll fix drip content later)
+      const accessibleContent = allContentData?.map(item => ({
+        ...item,
+        is_unlocked: true,
+        unlock_date: null
+      })) || [];
+
+      console.log('Accessible content:', accessibleContent);
+      setContent(accessibleContent);
 
       // Fetch user progress
       const { data: progressData } = await supabase
@@ -136,6 +131,7 @@ const LearnCoursePage = () => {
         .eq('course_id', id)
         .eq('user_id', user.id);
 
+      console.log('Progress data:', progressData);
       const progressMap = {};
       progressData?.forEach(p => {
         progressMap[p.content_id] = p;
@@ -143,13 +139,12 @@ const LearnCoursePage = () => {
       setProgress(progressMap);
 
     } catch (error) {
-      console.error('Error fetching course data:', error);
+      console.error('Error in checkEnrollmentAndFetchContent:', error);
       toast({
         title: 'Error',
         description: 'Failed to load course content',
         variant: 'destructive',
       });
-      navigate('/courses');
     } finally {
       setIsLoading(false);
     }
@@ -186,8 +181,6 @@ const LearnCoursePage = () => {
         description: 'Content marked as completed'
       });
 
-      // Refresh content to check for newly unlocked items
-      checkEnrollmentAndFetchContent();
     } catch (error) {
       console.error('Error updating progress:', error);
       toast({
@@ -228,22 +221,53 @@ const LearnCoursePage = () => {
   // Calculate current progress percentage
   const currentProgress = content.length > 0 ? Math.round(((currentContentIndex + 1) / content.length) * 100) : 0;
 
-  if (isLoading) return <div>Loading...</div>;
-
-  if (!course) {
-    return <div>Course not found</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading course...</p>
+        </div>
+      </div>
+    );
   }
 
-  // If no unlocked content, show the drip content viewer
+  if (!course) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Course Not Found</h1>
+          <p className="text-gray-600 mb-6">The course you're looking for doesn't exist.</p>
+          <Button onClick={() => navigate('/courses')} className="bg-blue-600 hover:bg-blue-700">
+            Browse All Courses
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // If no content available, show a helpful message
   if (content.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold">{course.title}</h1>
-            <p className="text-gray-600">Course content will unlock based on the schedule set by your instructor.</p>
+            <p className="text-gray-600">This course doesn't have any content yet.</p>
           </div>
-          <DripContentViewer />
+          
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No content available</h3>
+              <p className="text-gray-500 mb-4">
+                The instructor hasn't added any lessons to this course yet. Please check back later.
+              </p>
+              <Button onClick={() => navigate('/courses')} variant="outline">
+                Browse Other Courses
+              </Button>
+            </CardContent>
+          </Card>
           
           {/* AI Assistant Widget - only show if enabled for this course */}
           {course.ai_assistant_enabled && (
